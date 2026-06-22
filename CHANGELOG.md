@@ -9,10 +9,9 @@ All notable changes to SpriteSort2D are tracked here.
 - Made the default workflow component-only: add `Sprite Sort Component` and leave `VisualRoot`, `TargetPrimitive`, and `SortOrigin` empty.
 - Added `SmartAuto` update mode so static props update once while pawns/movement actors use timed movement checks.
 - Enabled actor-wide visual sorting by default, including sibling flipbooks for clothes, weapons, hair, and accessories.
-- Added actor-depth flattening so world Z height does not overpower top-down XY sorting.
-- Added `DepthPadding` for small render-depth nudges without hardcoding actor Z.
-- Added ground/map safety depth bias so sortable actors do not disappear behind unsorted ground sprites.
-- Added depth snapping to reduce masked-sprite flicker when two sortable actors are nearly coplanar.
+- Added `DepthPadding` for small smooth render-depth nudges without hardcoding actor Z.
+- Preserved actor visual stacks as one group by moving only top-level visual primitives and letting nested children inherit the offset.
+- Removed experimental ground-depth bias, depth snapping, and actor-depth flattening because they made sprites float and jump.
 - Reduced misleading editor warnings when auto visual collection is enabled.
 - Removed obsolete Details-panel action buttons now that the default workflow is component-only.
 - Updated README and QA docs around the simplified workflow.

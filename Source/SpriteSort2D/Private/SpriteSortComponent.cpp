@@ -38,12 +38,7 @@ USpriteSortComponent::USpriteSortComponent()
 		bAutoFindVisualRoot = Settings->bAutoFindVisualRoot;
 		bAutoFindTargetPrimitive = Settings->bAutoFindTargetPrimitive;
 		bSortAllVisualComponents = Settings->bSortAllVisualComponents;
-		bIgnoreActorDepth = Settings->bIgnoreActorDepth;
 		DepthPadding = Settings->DefaultDepthPadding;
-		GroundDepthBias = Settings->DefaultGroundDepthBias;
-		bKeepAboveGroundPlane = Settings->bKeepAboveGroundPlane;
-		MinimumGroundSeparation = Settings->DefaultMinimumGroundSeparation;
-		DepthSnapInterval = Settings->DefaultDepthSnapInterval;
 	}
 }
 
@@ -180,6 +175,7 @@ void USpriteSortComponent::SetVisualRoot(USceneComponent* NewVisualRoot)
 		VisualRoot = NewVisualRoot;
 		bHasOriginalRelativeTransform = false;
 		OriginalRelativeTransforms.Reset();
+		VisualBoundsComponents.Reset();
 		CacheOriginalVisualTransform(true);
 		RefreshVisualComponentCache();
 		WarnIfVisualRootContainsCollision();
@@ -303,6 +299,7 @@ void USpriteSortComponent::AutoFindVisualRoot()
 	{
 		bHasOriginalRelativeTransform = false;
 		OriginalRelativeTransforms.Reset();
+		VisualBoundsComponents.Reset();
 		CacheOriginalVisualTransform(true);
 	}
 }
@@ -352,6 +349,7 @@ void USpriteSortComponent::RefreshVisualComponentCache()
 	TArray<UPrimitiveComponent*> PrimitiveComponents;
 	Owner->GetComponents(PrimitiveComponents);
 
+	TSet<UPrimitiveComponent*> VisualCandidates;
 	for (UPrimitiveComponent* Primitive : PrimitiveComponents)
 	{
 		if (!IsValid(Primitive) || USpriteSortFunctionLibrary::IsLikelyCollisionComponent(Primitive))
@@ -364,7 +362,30 @@ void USpriteSortComponent::RefreshVisualComponentCache()
 			continue;
 		}
 
-		if (!OriginalRelativeTransforms.Contains(Primitive))
+		VisualCandidates.Add(Primitive);
+
+		if (!VisualBoundsComponents.Contains(Primitive))
+		{
+			VisualBoundsComponents.Add(Primitive);
+		}
+	}
+
+	for (UPrimitiveComponent* Primitive : VisualCandidates)
+	{
+		bool bHasVisualAncestor = false;
+		for (USceneComponent* Parent = Primitive->GetAttachParent(); Parent; Parent = Parent->GetAttachParent())
+		{
+			if (UPrimitiveComponent* ParentPrimitive = Cast<UPrimitiveComponent>(Parent))
+			{
+				if (VisualCandidates.Contains(ParentPrimitive))
+				{
+					bHasVisualAncestor = true;
+					break;
+				}
+			}
+		}
+
+		if (!bHasVisualAncestor && !OriginalRelativeTransforms.Contains(Primitive))
 		{
 			OriginalRelativeTransforms.Add(Primitive, Primitive->GetRelativeTransform());
 		}
@@ -477,58 +498,13 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 		return;
 	}
 
-	if (!bIgnoreActorDepth)
-	{
-		USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, CurrentVisualDepthOffset);
-		return;
-	}
-
 	const FVector NormalizedDepthAxis = CameraDepthAxis.GetSafeNormal();
 	if (NormalizedDepthAxis.IsNearlyZero())
 	{
 		return;
 	}
 
-	USceneComponent* Parent = Component->GetAttachParent();
-	const FTransform ParentTransform = Parent ? Parent->GetComponentTransform() : FTransform::Identity;
-	const FVector OriginalWorldLocation = ParentTransform.TransformPosition(OriginalTransform.GetLocation());
-	const AActor* Owner = GetOwner();
-	const FVector OwnerWorldLocation = IsValid(Owner) ? Owner->GetActorLocation() : FVector::ZeroVector;
-
-	const float OwnerDepth = FVector::DotProduct(OwnerWorldLocation, NormalizedDepthAxis);
-	const float DepthOffset = GetDepthOffsetScalar();
-	const FVector FlattenedWorldLocation = OriginalWorldLocation - NormalizedDepthAxis * OwnerDepth;
-	const FVector NewWorldLocation = FlattenedWorldLocation + NormalizedDepthAxis * DepthOffset;
-
-	FTransform NewWorldTransform = OriginalTransform;
-	NewWorldTransform.SetLocation(NewWorldLocation);
-	const FTransform NewRelativeTransform = NewWorldTransform.GetRelativeTransform(ParentTransform);
-	FTransform FinalRelativeTransform = OriginalTransform;
-	FinalRelativeTransform.SetLocation(NewRelativeTransform.GetLocation());
-	Component->SetRelativeTransform(FinalRelativeTransform);
-}
-
-float USpriteSortComponent::GetDepthOffsetScalar() const
-{
-	const FVector NormalizedDepthAxis = CameraDepthAxis.GetSafeNormal();
-	if (NormalizedDepthAxis.IsNearlyZero())
-	{
-		return 0.f;
-	}
-
-	float DepthOffset = FVector::DotProduct(CurrentVisualDepthOffset, NormalizedDepthAxis) + GroundDepthBias + DepthPadding;
-
-	if (DepthSnapInterval > SMALL_NUMBER)
-	{
-		DepthOffset = FMath::GridSnap(DepthOffset, DepthSnapInterval);
-	}
-
-	if (bKeepAboveGroundPlane)
-	{
-		DepthOffset = FMath::Max(DepthOffset, MinimumGroundSeparation);
-	}
-
-	return DepthOffset;
+	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, CurrentVisualDepthOffset + NormalizedDepthAxis * DepthPadding);
 }
 
 void USpriteSortComponent::ApplyTranslucentPriorityFallback()
@@ -724,11 +700,11 @@ bool USpriteSortComponent::TryGetVisualBounds(FBoxSphereBounds& OutBounds) const
 
 	FBox BoundsBox(ForceInit);
 
-	if (bSortAllVisualComponents && OriginalRelativeTransforms.Num() > 0)
+	if (bSortAllVisualComponents && VisualBoundsComponents.Num() > 0)
 	{
-		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+		for (const TWeakObjectPtr<UPrimitiveComponent>& ComponentPtr : VisualBoundsComponents)
 		{
-			const UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Entry.Key.Get());
+			const UPrimitiveComponent* Primitive = ComponentPtr.Get();
 			if (!IsValid(Primitive))
 			{
 				continue;

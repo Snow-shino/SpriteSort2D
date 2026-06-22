@@ -34,12 +34,12 @@ Use this checklist before public release and after meaningful runtime changes.
 - [ ] Tall grass overlay can render over the player when its sort origin/base requires it.
 - [ ] Moving NPC sorts against static props.
 - [ ] Two moving actors crossing each other remain visually stable.
-- [ ] Actor placed higher on world Z still sorts by top-down base position when `bIgnoreActorDepth` is enabled.
+- [ ] Actor visual local Z offsets are preserved after sorting.
 - [ ] Small local visual offsets, such as `0.2` above a tile, are preserved.
-- [ ] Moving player does not disappear behind an unsorted ground/map sprite.
+- [ ] Documentation explains that unsorted ground/map sprites must not compete with character depth.
 - [ ] Pillar/player overlap does not flicker when both actors use matching Sprite Sort settings.
-- [ ] `DepthSnapInterval` reduces flicker when sort depths are very close.
-- [ ] `GroundDepthBias` can be raised for maps placed above the default ground plane.
+- [ ] Nested child visual components inherit parent visual offset without being double-offset.
+- [ ] Sibling visual components receive the same smooth actor-level depth offset.
 - [ ] `bInvertSort` reverses order.
 - [ ] Lowering `DepthScale` reduces visual movement.
 

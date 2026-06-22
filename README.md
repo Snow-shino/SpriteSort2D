@@ -46,8 +46,7 @@ By default, the component:
 - Ignores likely collision components.
 - Infers a feet/base point from visual bounds.
 - Uses `Smart Auto` updates.
-- Keeps gameplay Z from overpowering top-down XY sorting.
-- Keeps sortable sprites above unsorted ground/map sprites by default.
+- Preserves each visual component's original local offset.
 
 ## Recommended Actor Hierarchies
 
@@ -122,12 +121,7 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 ## Important Settings
 
 - `bSortAllVisualComponents`: default on. Sorts the actor's safe visual primitives together.
-- `bIgnoreActorDepth`: default on. Prevents actor/world Z height from breaking top-down XY sorting.
-- `GroundDepthBias`: default `100`. Lifts sortable visuals above unsorted ground/map sprites.
-- `bKeepAboveGroundPlane`: default on. Prevents negative sort values from pushing actors behind the map.
-- `MinimumGroundSeparation`: default `1`. Minimum spacing above unsorted ground/map sprites.
-- `DepthSnapInterval`: default `0.5`. Snaps depth offsets to reduce masked-sprite flicker.
-- `DepthPadding`: default `0.2`. Tiny extra spacing, useful for keeping visuals a hair above ground tiles.
+- `DepthPadding`: default `0.2`. Tiny smooth extra spacing on the render-depth axis.
 - `OriginMode`: where the sort point comes from. Leave on `Auto` for most actors.
 - `SortOffset`: optional feet/base nudge when automatic bounds are not quite right.
 - `SortAxis`: world axis used to calculate sort order. Usually world Y for top-down Paper2D.
@@ -215,15 +209,15 @@ Sprite does not sort:
 Player disappears behind the map:
 
 - The map/ground sprite is still writing to the depth buffer even without `Sprite Sort Component`.
-- Keep `bKeepAboveGroundPlane` enabled.
-- Increase `GroundDepthBias` if your map uses a higher render-depth placement.
-- Existing actors made before this change may still have old defaults; reset the Sprite Sort Component defaults or set `DepthScale` to `0.05`, `GroundDepthBias` to `100`, and `DepthSnapInterval` to `0.5`.
+- Put the map/ground sprite on a background render/depth layer, or use a ground material that does not compete with character depth.
+- SpriteSort2D intentionally does not force characters to a fake Z height, because that causes floating and bad offsets.
+- Existing actors made during the ground-bias test should reset removed values by re-adding the component or recompiling the Blueprint.
 
 Player flickers/clips against a pillar:
 
 - Make sure the pillar also has `Sprite Sort Component`.
-- Set both player and pillar to the same `SortAxis`, `CameraDepthAxis`, `DepthScale`, and ground-safety values.
-- Keep `DepthSnapInterval` above zero. The default `0.5` reduces tiny z-fighting gaps.
+- Set both player and pillar to the same `SortAxis`, `CameraDepthAxis`, and `DepthScale`.
+- Keep `DepthScale` large enough to create real depth separation, but not so large that visuals visibly drift. Default is `0.01`.
 - If the pillar art has a weird base, add a `Sprite Sort Origin` only for that pillar.
 
 Sprite moves visually too far:
@@ -246,9 +240,9 @@ Player always appears in front:
 
 Sorting breaks when actors have different Z heights:
 
-- Keep `bIgnoreActorDepth` enabled.
-- Use actor Z for gameplay if needed; Sprite Sort 2D will flatten that out for visual sorting.
+- Keep gameplay actors near a consistent 2D plane when using depth-buffer sorting.
 - Use small local visual offsets or `DepthPadding` for tiny layer nudges like props sitting above tiles.
+- SpriteSort2D preserves local visual offsets and does not force actors to a fixed Z height.
 
 Weapons, clothes, or hair do not follow the character sort:
 
