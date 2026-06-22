@@ -4,6 +4,8 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/MovementComponent.h"
+#include "GameFramework/Pawn.h"
 #include "SpriteSortFunctionLibrary.h"
 #include "SpriteSortSettings.h"
 #include "Components/PrimitiveComponent.h"
@@ -35,6 +37,9 @@ USpriteSortComponent::USpriteSortComponent()
 		bDebugDraw = Settings->bDebugDrawByDefault;
 		bAutoFindVisualRoot = Settings->bAutoFindVisualRoot;
 		bAutoFindTargetPrimitive = Settings->bAutoFindTargetPrimitive;
+		bSortAllVisualComponents = Settings->bSortAllVisualComponents;
+		bIgnoreActorDepth = Settings->bIgnoreActorDepth;
+		DepthPadding = Settings->DefaultDepthPadding;
 	}
 }
 
@@ -60,6 +65,7 @@ void USpriteSortComponent::BeginPlay()
 
 	WarnIfVisualRootContainsCollision();
 	CacheOriginalVisualTransform(true);
+	RefreshVisualComponentCache();
 	ResetMovementBaseline();
 
 	if (UpdateMode != ESpriteSortUpdateMode::Manual)
@@ -80,12 +86,13 @@ void USpriteSortComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!bEnableSorting || UpdateMode == ESpriteSortUpdateMode::Manual || UpdateMode == ESpriteSortUpdateMode::OnBeginPlayOnly)
+	const ESpriteSortUpdateMode ResolvedUpdateMode = GetResolvedUpdateMode();
+	if (!bEnableSorting || ResolvedUpdateMode == ESpriteSortUpdateMode::Manual || ResolvedUpdateMode == ESpriteSortUpdateMode::OnBeginPlayOnly)
 	{
 		return;
 	}
 
-	if (UpdateMode == ESpriteSortUpdateMode::EveryTick || HasSortMovementChanged())
+	if (ResolvedUpdateMode == ESpriteSortUpdateMode::EveryTick || HasSortMovementChanged())
 	{
 		UpdateSortNow();
 	}
@@ -108,6 +115,8 @@ void USpriteSortComponent::UpdateSortNow()
 	{
 		AutoFindTargetPrimitive();
 	}
+
+	RefreshVisualComponentCache();
 
 	if (!ValidateForSorting())
 	{
@@ -166,7 +175,9 @@ void USpriteSortComponent::SetVisualRoot(USceneComponent* NewVisualRoot)
 		RestoreOriginalVisualTransform();
 		VisualRoot = NewVisualRoot;
 		bHasOriginalRelativeTransform = false;
+		OriginalRelativeTransforms.Reset();
 		CacheOriginalVisualTransform(true);
+		RefreshVisualComponentCache();
 		WarnIfVisualRootContainsCollision();
 		UpdateSortNow();
 	}
@@ -199,7 +210,7 @@ void USpriteSortComponent::SetUpdateMode(ESpriteSortUpdateMode NewUpdateMode)
 	UpdateTickEnabled();
 	ResetMovementBaseline();
 
-	if (UpdateMode != ESpriteSortUpdateMode::Manual)
+	if (GetResolvedUpdateMode() != ESpriteSortUpdateMode::Manual)
 	{
 		UpdateSortNow();
 	}
@@ -260,6 +271,14 @@ void USpriteSortComponent::RestoreOriginalVisualTransform()
 		VisualRoot->SetRelativeTransform(OriginalRelativeTransform);
 	}
 
+	for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+	{
+		if (USceneComponent* Component = Entry.Key.Get())
+		{
+			Component->SetRelativeTransform(Entry.Value);
+		}
+	}
+
 	CurrentVisualDepthOffset = FVector::ZeroVector;
 }
 
@@ -279,6 +298,7 @@ void USpriteSortComponent::AutoFindVisualRoot()
 	else
 	{
 		bHasOriginalRelativeTransform = false;
+		OriginalRelativeTransforms.Reset();
 		CacheOriginalVisualTransform(true);
 	}
 }
@@ -300,6 +320,11 @@ void USpriteSortComponent::AutoFindTargetPrimitive()
 
 void USpriteSortComponent::CacheOriginalVisualTransform(bool bForce)
 {
+	if (bSortAllVisualComponents)
+	{
+		RefreshVisualComponentCache();
+	}
+
 	if (!IsValid(VisualRoot))
 	{
 		return;
@@ -309,6 +334,36 @@ void USpriteSortComponent::CacheOriginalVisualTransform(bool bForce)
 	{
 		OriginalRelativeTransform = VisualRoot->GetRelativeTransform();
 		bHasOriginalRelativeTransform = true;
+	}
+}
+
+void USpriteSortComponent::RefreshVisualComponentCache()
+{
+	AActor* Owner = GetOwner();
+	if (!IsValid(Owner) || !bSortAllVisualComponents)
+	{
+		return;
+	}
+
+	TArray<UPrimitiveComponent*> PrimitiveComponents;
+	Owner->GetComponents(PrimitiveComponents);
+
+	for (UPrimitiveComponent* Primitive : PrimitiveComponents)
+	{
+		if (!IsValid(Primitive) || USpriteSortFunctionLibrary::IsLikelyCollisionComponent(Primitive))
+		{
+			continue;
+		}
+
+		if (Primitive == Owner->GetRootComponent())
+		{
+			continue;
+		}
+
+		if (!OriginalRelativeTransforms.Contains(Primitive))
+		{
+			OriginalRelativeTransforms.Add(Primitive, Primitive->GetRelativeTransform());
+		}
 	}
 }
 
@@ -340,6 +395,12 @@ bool USpriteSortComponent::HasSortMovementChanged()
 		|| FVector::DistSquared(SortWorldLocation, LastSortWorldLocation) > ThresholdSq;
 }
 
+bool USpriteSortComponent::ShouldUseMovementUpdates() const
+{
+	const ESpriteSortUpdateMode ResolvedUpdateMode = GetResolvedUpdateMode();
+	return ResolvedUpdateMode == ESpriteSortUpdateMode::WhenMoved || ResolvedUpdateMode == ESpriteSortUpdateMode::EveryTick;
+}
+
 bool USpriteSortComponent::ValidateForSorting() const
 {
 	const AActor* Owner = GetOwner();
@@ -348,9 +409,9 @@ bool USpriteSortComponent::ValidateForSorting() const
 		return false;
 	}
 
-	if (!IsValid(VisualRoot))
+	if (!IsValid(VisualRoot) && OriginalRelativeTransforms.Num() == 0)
 	{
-		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: SpriteSortComponent needs a VisualRoot before it can sort."), *Owner->GetName());
+		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: SpriteSortComponent could not find any safe visual sprites/primitive components to sort. Add a PaperSprite, PaperFlipbook, StaticMesh, or a child visual component. Collision components are intentionally ignored."), *Owner->GetName());
 		return false;
 	}
 
@@ -387,12 +448,60 @@ bool USpriteSortComponent::ValidateForSorting() const
 
 void USpriteSortComponent::ApplyVisualDepthOffset()
 {
-	if (!IsValid(VisualRoot) || !bHasOriginalRelativeTransform)
+	if (bSortAllVisualComponents && OriginalRelativeTransforms.Num() > 0)
+	{
+		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+		{
+			if (USceneComponent* Component = Entry.Key.Get())
+			{
+				ApplyDepthOffsetToComponent(Component, Entry.Value);
+			}
+		}
+		return;
+	}
+
+	if (IsValid(VisualRoot) && bHasOriginalRelativeTransform)
+	{
+		ApplyDepthOffsetToComponent(VisualRoot, OriginalRelativeTransform);
+	}
+}
+
+void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Component, const FTransform& OriginalTransform)
+{
+	if (!IsValid(Component))
 	{
 		return;
 	}
 
-	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(VisualRoot, OriginalRelativeTransform, CurrentVisualDepthOffset);
+	if (!bIgnoreActorDepth)
+	{
+		USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, CurrentVisualDepthOffset);
+		return;
+	}
+
+	const FVector NormalizedDepthAxis = CameraDepthAxis.GetSafeNormal();
+	if (NormalizedDepthAxis.IsNearlyZero())
+	{
+		return;
+	}
+
+	USceneComponent* Parent = Component->GetAttachParent();
+	const FTransform ParentTransform = Parent ? Parent->GetComponentTransform() : FTransform::Identity;
+	const FVector OriginalWorldLocation = ParentTransform.TransformPosition(OriginalTransform.GetLocation());
+	const AActor* Owner = GetOwner();
+	const FVector OwnerWorldLocation = IsValid(Owner) ? Owner->GetActorLocation() : FVector::ZeroVector;
+
+	const float OwnerDepth = FVector::DotProduct(OwnerWorldLocation, NormalizedDepthAxis);
+	const float DepthOffset = FVector::DotProduct(CurrentVisualDepthOffset, NormalizedDepthAxis) + DepthPadding;
+	const FVector FlattenedWorldLocation = OriginalWorldLocation - NormalizedDepthAxis * OwnerDepth;
+	const FVector NewWorldLocation = FlattenedWorldLocation + NormalizedDepthAxis * DepthOffset;
+
+	FTransform NewWorldTransform = OriginalTransform;
+	NewWorldTransform.SetLocation(NewWorldLocation);
+	const FTransform NewRelativeTransform = NewWorldTransform.GetRelativeTransform(ParentTransform);
+	FTransform FinalRelativeTransform = OriginalTransform;
+	FinalRelativeTransform.SetLocation(NewRelativeTransform.GetLocation());
+	Component->SetRelativeTransform(FinalRelativeTransform);
 }
 
 void USpriteSortComponent::ApplyTranslucentPriorityFallback()
@@ -409,19 +518,41 @@ void USpriteSortComponent::ApplyTranslucentPriorityFallback()
 void USpriteSortComponent::DrawDebugInfo()
 {
 	UWorld* World = GetWorld();
-	if (!World || !IsValid(VisualRoot))
+	if (!World || (!IsValid(VisualRoot) && OriginalRelativeTransforms.Num() == 0))
 	{
 		return;
 	}
 
 	const FVector SortLocation = GetStableSortWorldLocation();
-	const USceneComponent* Parent = VisualRoot->GetAttachParent();
+	const USceneComponent* DebugComponent = VisualRoot;
+	const FTransform* DebugOriginalTransform = IsValid(VisualRoot) && bHasOriginalRelativeTransform ? &OriginalRelativeTransform : nullptr;
+	if (!DebugComponent && OriginalRelativeTransforms.Num() > 0)
+	{
+		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+		{
+			if (USceneComponent* Component = Entry.Key.Get())
+			{
+				DebugComponent = Component;
+				DebugOriginalTransform = &Entry.Value;
+				break;
+			}
+		}
+	}
+
+	if (!DebugComponent || !DebugOriginalTransform)
+	{
+		return;
+	}
+
+	const USceneComponent* Parent = DebugComponent->GetAttachParent();
 	const FVector OriginalVisualLocation = Parent
-		? Parent->GetComponentTransform().TransformPosition(OriginalRelativeTransform.GetLocation())
-		: OriginalRelativeTransform.GetLocation();
-	const FVector AdjustedVisualLocation = VisualRoot->GetComponentLocation();
-	const FString VisualName = VisualRoot ? VisualRoot->GetName() : TEXT("None");
-	const FString UpdateModeName = StaticEnum<ESpriteSortUpdateMode>()->GetNameStringByValue(static_cast<int64>(UpdateMode));
+		? Parent->GetComponentTransform().TransformPosition(DebugOriginalTransform->GetLocation())
+		: DebugOriginalTransform->GetLocation();
+	const FVector AdjustedVisualLocation = DebugComponent->GetComponentLocation();
+	const FString VisualName = bSortAllVisualComponents
+		? FString::Printf(TEXT("%d visuals"), OriginalRelativeTransforms.Num())
+		: DebugComponent->GetName();
+	const FString UpdateModeName = StaticEnum<ESpriteSortUpdateMode>()->GetNameStringByValue(static_cast<int64>(GetResolvedUpdateMode()));
 	const FString Label = FString::Printf(TEXT("Sort %.2f | Offset %s | %s | %s"), CurrentSortValue, *CurrentVisualDepthOffset.ToCompactString(), *UpdateModeName, *VisualName);
 
 	DrawDebugSphere(World, SortLocation, 8.f, 12, FColor::Cyan, false, DefaultDrawDuration);
@@ -466,13 +597,41 @@ void USpriteSortComponent::WarnIfVisualRootContainsCollision() const
 void USpriteSortComponent::UpdateTickEnabled()
 {
 	const bool bShouldTick = bEnableSorting
-		&& (UpdateMode == ESpriteSortUpdateMode::WhenMoved || UpdateMode == ESpriteSortUpdateMode::EveryTick);
+		&& ShouldUseMovementUpdates();
 
-	PrimaryComponentTick.TickInterval = UpdateMode == ESpriteSortUpdateMode::WhenMoved
+	const ESpriteSortUpdateMode ResolvedUpdateMode = GetResolvedUpdateMode();
+	PrimaryComponentTick.TickInterval = ResolvedUpdateMode == ESpriteSortUpdateMode::WhenMoved
 		? FMath::Max(0.f, WhenMovedTickInterval)
 		: 0.f;
 
 	SetComponentTickEnabled(bShouldTick);
+}
+
+ESpriteSortUpdateMode USpriteSortComponent::GetResolvedUpdateMode() const
+{
+	if (UpdateMode != ESpriteSortUpdateMode::SmartAuto)
+	{
+		return UpdateMode;
+	}
+
+	return IsProbablyDynamicActor() ? ESpriteSortUpdateMode::WhenMoved : ESpriteSortUpdateMode::OnBeginPlayOnly;
+}
+
+bool USpriteSortComponent::IsProbablyDynamicActor() const
+{
+	const AActor* Owner = GetOwner();
+	if (!IsValid(Owner))
+	{
+		return true;
+	}
+
+	if (Owner->IsA<APawn>() || Owner->FindComponentByClass<UMovementComponent>())
+	{
+		return true;
+	}
+
+	const USceneComponent* Root = Owner->GetRootComponent();
+	return IsValid(Root) && Root->Mobility == EComponentMobility::Movable && Owner->Tags.Contains(TEXT("SpriteSortDynamic"));
 }
 
 bool USpriteSortComponent::UsesBoundsBasedOrigin() const
@@ -487,9 +646,31 @@ bool USpriteSortComponent::UsesBoundsBasedOrigin() const
 
 FVector USpriteSortComponent::GetStableSortWorldLocation()
 {
-	if (!UsesBoundsBasedOrigin() || !IsValid(VisualRoot) || !bHasOriginalRelativeTransform)
+	if (!UsesBoundsBasedOrigin() || ((!IsValid(VisualRoot) || !bHasOriginalRelativeTransform) && OriginalRelativeTransforms.Num() == 0))
 	{
 		return GetSortWorldLocation();
+	}
+
+	if (bSortAllVisualComponents && OriginalRelativeTransforms.Num() > 0)
+	{
+		TArray<TPair<USceneComponent*, FTransform>> SavedTransforms;
+		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+		{
+			if (USceneComponent* Component = Entry.Key.Get())
+			{
+				SavedTransforms.Emplace(Component, Component->GetRelativeTransform());
+				Component->SetRelativeTransform(Entry.Value);
+			}
+		}
+
+		const FVector SortWorldLocation = GetSortWorldLocation();
+
+		for (const TPair<USceneComponent*, FTransform>& Entry : SavedTransforms)
+		{
+			Entry.Key->SetRelativeTransform(Entry.Value);
+		}
+
+		return SortWorldLocation;
 	}
 
 	const FTransform SavedRelativeTransform = VisualRoot->GetRelativeTransform();
@@ -498,47 +679,61 @@ FVector USpriteSortComponent::GetStableSortWorldLocation()
 	{
 		VisualRoot->SetRelativeTransform(OriginalRelativeTransform);
 	}
-
 	const FVector SortWorldLocation = GetSortWorldLocation();
-
 	if (bWasOffset)
 	{
 		VisualRoot->SetRelativeTransform(SavedRelativeTransform);
 	}
-
 	return SortWorldLocation;
 }
 
 bool USpriteSortComponent::TryGetVisualBounds(FBoxSphereBounds& OutBounds) const
 {
 	const AActor* Owner = GetOwner();
-	if (!IsValid(Owner) || !IsValid(VisualRoot))
+	if (!IsValid(Owner))
 	{
 		return false;
 	}
 
 	FBox BoundsBox(ForceInit);
-	TArray<UPrimitiveComponent*> PrimitiveComponents;
-	Owner->GetComponents(PrimitiveComponents);
 
-	for (const UPrimitiveComponent* Primitive : PrimitiveComponents)
+	if (bSortAllVisualComponents && OriginalRelativeTransforms.Num() > 0)
 	{
-		if (!IsValid(Primitive) || USpriteSortFunctionLibrary::IsLikelyCollisionComponent(Primitive))
+		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
 		{
-			continue;
-		}
+			const UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Entry.Key.Get());
+			if (!IsValid(Primitive))
+			{
+				continue;
+			}
 
-		if (Primitive == VisualRoot || Primitive->IsAttachedTo(VisualRoot))
-		{
 			BoundsBox += Primitive->Bounds.GetBox();
 		}
 	}
-
-	if (!BoundsBox.IsValid)
+	else if (IsValid(VisualRoot))
 	{
-		if (const UPrimitiveComponent* VisualPrimitive = Cast<UPrimitiveComponent>(VisualRoot))
+		TArray<UPrimitiveComponent*> PrimitiveComponents;
+		Owner->GetComponents(PrimitiveComponents);
+
+		for (const UPrimitiveComponent* Primitive : PrimitiveComponents)
 		{
-			BoundsBox += VisualPrimitive->Bounds.GetBox();
+			if (!IsValid(Primitive) || USpriteSortFunctionLibrary::IsLikelyCollisionComponent(Primitive))
+			{
+				continue;
+			}
+
+			if (Primitive == VisualRoot || Primitive->IsAttachedTo(VisualRoot))
+			{
+				BoundsBox += Primitive->Bounds.GetBox();
+			}
+		}
+
+		if (!BoundsBox.IsValid)
+		{
+			if (const UPrimitiveComponent* VisualPrimitive = Cast<UPrimitiveComponent>(VisualRoot))
+			{
+				BoundsBox += VisualPrimitive->Bounds.GetBox();
+			}
 		}
 	}
 

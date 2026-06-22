@@ -77,6 +77,7 @@ void FSpriteSortComponentCustomization::CustomizeDetails(IDetailLayoutBuilder& D
 	[
 		SNew(STextBlock)
 		.Text(this, &FSpriteSortComponentCustomization::GetWarningText)
+		.Visibility(this, &FSpriteSortComponentCustomization::GetWarningVisibility)
 		.ColorAndOpacity(FLinearColor(1.f, 0.55f, 0.15f, 1.f))
 		.AutoWrapText(true)
 	];
@@ -173,7 +174,7 @@ FText FSpriteSortComponentCustomization::GetWarningText() const
 			continue;
 		}
 
-		if (!Component->VisualRoot)
+		if (!Component->VisualRoot && !Component->bSortAllVisualComponents)
 		{
 			return LOCTEXT("MissingVisualRootWarning", "VisualRoot is missing. Assign one or use Auto Find Visual Root.");
 		}
@@ -230,7 +231,7 @@ bool FSpriteSortComponentCustomization::AutoFindOnBlueprintTemplate(USpriteSortC
 	SCS->Modify();
 	Component->Modify();
 
-	if (!Component->VisualRoot)
+	if (!Component->VisualRoot && !Component->bSortAllVisualComponents)
 	{
 		Component->VisualRoot = FindBestBlueprintVisualRoot(SCS);
 	}
@@ -297,7 +298,7 @@ bool FSpriteSortComponentCustomization::CreateSortOriginOnBlueprintTemplate(USpr
 	Component->SortOrigin = OriginTemplate;
 	Component->SortOffset = FVector::ZeroVector;
 
-	if (!Component->VisualRoot)
+	if (!Component->VisualRoot && !Component->bSortAllVisualComponents)
 	{
 		Component->VisualRoot = FindBestBlueprintVisualRoot(SCS);
 	}

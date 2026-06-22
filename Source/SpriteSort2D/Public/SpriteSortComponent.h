@@ -16,16 +16,16 @@ class SPRITESORT2D_API USpriteSortComponent : public UActorComponent
 public:
 	USpriteSortComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Advanced", meta = (AdvancedDisplay))
 	TObjectPtr<USceneComponent> VisualRoot;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Advanced", meta = (AdvancedDisplay))
 	TObjectPtr<UPrimitiveComponent> TargetPrimitive;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Advanced", meta = (AdvancedDisplay))
 	TObjectPtr<USceneComponent> SortOrigin;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Optional feet/base offset. Most actors can leave this at zero because Auto origin uses the bottom of the visual bounds."))
 	FVector SortOffset = FVector::ZeroVector;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
@@ -43,6 +43,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.000001"))
 	float DepthScale = 0.01f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Keeps gameplay Z from accidentally overpowering top-down XY sorting. Visuals keep their local offsets, but actor/world height is flattened before the sort depth is applied."))
+	bool bIgnoreActorDepth = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Tiny extra spacing on the render-depth axis. Useful for keeping props a hair above ground tiles without hardcoding actor Z."))
+	float DepthPadding = 0.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "When true, SpriteSort2D moves every safe visual primitive on the actor, including sibling sprites for clothes, hair, weapons, shadows, and attachments. Collision is ignored."))
+	bool bSortAllVisualComponents = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Performance", meta = (ClampMin = "0.0"))
 	float MovementThreshold = 0.1f;
 
@@ -59,7 +68,7 @@ public:
 	bool bDebugDraw = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
-	ESpriteSortUpdateMode UpdateMode = ESpriteSortUpdateMode::WhenMoved;
+	ESpriteSortUpdateMode UpdateMode = ESpriteSortUpdateMode::SmartAuto;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
 	ESpriteSortMode SortingMode = ESpriteSortMode::VisualDepthOffset;
@@ -126,17 +135,23 @@ private:
 	FVector LastOwnerLocation = FVector::ZeroVector;
 	FVector LastSortWorldLocation = FVector::ZeroVector;
 	bool bHasMovementBaseline = false;
+	TMap<TWeakObjectPtr<USceneComponent>, FTransform> OriginalRelativeTransforms;
 
+	void RefreshVisualComponentCache();
 	void CacheOriginalVisualTransform(bool bForce = false);
 	void ResetMovementBaseline();
 	void SetMovementBaseline(FVector NewSortWorldLocation);
 	bool HasSortMovementChanged();
+	bool ShouldUseMovementUpdates() const;
 	bool ValidateForSorting() const;
 	void ApplyVisualDepthOffset();
+	void ApplyDepthOffsetToComponent(USceneComponent* Component, const FTransform& OriginalTransform);
 	void ApplyTranslucentPriorityFallback();
 	void DrawDebugInfo();
 	void WarnIfVisualRootContainsCollision() const;
 	void UpdateTickEnabled();
+	ESpriteSortUpdateMode GetResolvedUpdateMode() const;
+	bool IsProbablyDynamicActor() const;
 	bool UsesBoundsBasedOrigin() const;
 	FVector GetStableSortWorldLocation();
 	bool TryGetVisualBounds(FBoxSphereBounds& OutBounds) const;

@@ -8,6 +8,7 @@ This list is intentionally scoped. SpriteSort2D should stay a focused sorting pl
 - [ ] Capture before/after screenshots or a short GIF.
 - [ ] Verify UE 5.6 builds.
 - [ ] Test in a clean Blueprint-only UE project.
+- [ ] QA the one-component workflow on player, NPC, tree, grass, fence, and equipment-heavy character Blueprints.
 - [ ] Confirm default axes for the target camera style used in the demo.
 - [ ] Decide whether public repo name should be `SpriteSort2D` or `UE-SpriteSort2D`.
 

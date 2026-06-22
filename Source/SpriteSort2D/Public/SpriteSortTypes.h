@@ -6,6 +6,7 @@
 UENUM(BlueprintType)
 enum class ESpriteSortUpdateMode : uint8
 {
+	SmartAuto UMETA(DisplayName = "Smart Auto"),
 	OnBeginPlayOnly UMETA(DisplayName = "On Begin Play Only"),
 	WhenMoved UMETA(DisplayName = "When Moved"),
 	EveryTick UMETA(DisplayName = "Every Tick"),

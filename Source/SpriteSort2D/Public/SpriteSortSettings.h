@@ -29,10 +29,10 @@ public:
 	float DefaultMovementThreshold = 0.1f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Performance", meta = (ClampMin = "0.0"))
-	float DefaultWhenMovedTickInterval = 0.f;
+	float DefaultWhenMovedTickInterval = 0.05f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
-	ESpriteSortUpdateMode DefaultUpdateMode = ESpriteSortUpdateMode::WhenMoved;
+	ESpriteSortUpdateMode DefaultUpdateMode = ESpriteSortUpdateMode::SmartAuto;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	ESpriteSortOriginMode DefaultOriginMode = ESpriteSortOriginMode::Auto;
@@ -45,6 +45,15 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Auto Find")
 	bool bAutoFindTargetPrimitive = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Auto Find")
+	bool bSortAllVisualComponents = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
+	bool bIgnoreActorDepth = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultDepthPadding = 0.2f;
 
 	virtual FName GetCategoryName() const override;
 	virtual FName GetSectionName() const override;

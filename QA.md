@@ -15,9 +15,12 @@ Use this checklist before public release and after meaningful runtime changes.
 
 - [ ] PaperSprite actor sorts with only `Sprite Sort Component` added.
 - [ ] PaperFlipbook actor sorts with only `Sprite Sort Component` added.
+- [ ] Actor sorts with `VisualRoot`, `TargetPrimitive`, and `SortOrigin` left empty.
+- [ ] Actor with sibling clothing/weapon flipbooks sorts all visuals together.
 - [ ] Actor with explicit `VisualRoot` sorts correctly.
 - [ ] Actor with explicit `Sprite Sort Origin` overrides automatic origin.
-- [ ] Actor without `VisualRoot` logs a clear warning when auto-find fails.
+- [ ] Actor without `VisualRoot` does not warn when `bSortAllVisualComponents` is enabled.
+- [ ] Actor with no safe visual primitives logs a clear warning.
 - [ ] Actor with zero `SortAxis` logs a clear warning.
 - [ ] Actor with zero `CameraDepthAxis` logs a clear warning.
 - [ ] Actor with collision under `VisualRoot` logs a clear warning.
@@ -31,14 +34,18 @@ Use this checklist before public release and after meaningful runtime changes.
 - [ ] Tall grass overlay can render over the player when its sort origin/base requires it.
 - [ ] Moving NPC sorts against static props.
 - [ ] Two moving actors crossing each other remain visually stable.
+- [ ] Actor placed higher on world Z still sorts by top-down base position when `bIgnoreActorDepth` is enabled.
+- [ ] Small local visual offsets, such as `0.2` above a tile, are preserved.
 - [ ] `bInvertSort` reverses order.
 - [ ] Lowering `DepthScale` reduces visual movement.
 
 ## Update Modes
 
 - [ ] `OnBeginPlayOnly` updates once and does not keep ticking.
+- [ ] `SmartAuto` updates static props once.
+- [ ] `SmartAuto` uses movement checks for pawns or actors with movement components.
 - [ ] `WhenMoved` updates only after movement exceeds `MovementThreshold`.
-- [ ] `WhenMovedTickInterval` throttles movement checks when set above zero.
+- [ ] `WhenMovedTickInterval` throttles movement checks.
 - [ ] `EveryTick` updates each frame.
 - [ ] `Manual` does not update until `UpdateSortNow()` is called.
 
