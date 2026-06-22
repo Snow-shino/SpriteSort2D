@@ -37,6 +37,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
 	FVector CameraDepthAxis = FVector(0.f, 0.f, 1.f);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Uses the active camera forward vector for the invisible render-depth push. This is recommended for full games because sprite height/Z placement should not decide sorting. CameraDepthAxis is used as a fallback when no camera is available."))
+	bool bUseCameraForwardDepthAxis = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (EditCondition = "OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase", EditConditionHides))
 	FVector BoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
@@ -152,6 +155,7 @@ private:
 	bool IsProbablyDynamicActor() const;
 	bool UsesBoundsBasedOrigin() const;
 	FVector GetStableSortWorldLocation();
+	FVector GetEffectiveCameraDepthAxis() const;
 	bool TryGetVisualPivotLocation(FVector& OutLocation) const;
 	bool TryGetVisualBounds(FBoxSphereBounds& OutBounds) const;
 	bool TryGetTargetBounds(FBoxSphereBounds& OutBounds) const;

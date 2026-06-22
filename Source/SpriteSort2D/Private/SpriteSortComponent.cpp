@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/MovementComponent.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/PlayerCameraManager.h"
 #include "SpriteSortFunctionLibrary.h"
 #include "SpriteSortSettings.h"
 #include "Components/PrimitiveComponent.h"
@@ -28,6 +30,7 @@ USpriteSortComponent::USpriteSortComponent()
 	{
 		SortAxis = Settings->DefaultSortAxis;
 		CameraDepthAxis = Settings->DefaultCameraDepthAxis;
+		bUseCameraForwardDepthAxis = Settings->bDefaultUseCameraForwardDepthAxis;
 		BoundsBaseAxis = Settings->DefaultBoundsBaseAxis;
 		DepthScale = Settings->DefaultDepthScale;
 		MovementThreshold = Settings->DefaultMovementThreshold;
@@ -126,7 +129,7 @@ void USpriteSortComponent::UpdateSortNow()
 
 	const FVector SortWorldLocation = GetStableSortWorldLocation();
 	CurrentSortValue = USpriteSortFunctionLibrary::CalculateSortValueFromLocation(SortWorldLocation, SortAxis, bInvertSort);
-	CurrentVisualDepthOffset = USpriteSortFunctionLibrary::CalculateDepthOffset(CurrentSortValue, CameraDepthAxis, DepthScale);
+	CurrentVisualDepthOffset = USpriteSortFunctionLibrary::CalculateDepthOffset(CurrentSortValue, GetEffectiveCameraDepthAxis(), DepthScale);
 
 	switch (SortingMode)
 	{
@@ -355,6 +358,8 @@ void USpriteSortComponent::RefreshVisualComponentCache()
 		return;
 	}
 
+	VisualBoundsComponents.Reset();
+
 	TArray<UPrimitiveComponent*> PrimitiveComponents;
 	Owner->GetComponents(PrimitiveComponents);
 
@@ -450,7 +455,7 @@ bool USpriteSortComponent::ValidateForSorting() const
 		return false;
 	}
 
-	if (CameraDepthAxis.IsNearlyZero())
+	if (GetEffectiveCameraDepthAxis().IsNearlyZero())
 	{
 		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: SpriteSortComponent CameraDepthAxis is zero. Use the world axis that should receive visual depth offsets."), *Owner->GetName());
 		return false;
@@ -502,7 +507,7 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 		return;
 	}
 
-	const FVector NormalizedDepthAxis = CameraDepthAxis.GetSafeNormal();
+	const FVector NormalizedDepthAxis = GetEffectiveCameraDepthAxis().GetSafeNormal();
 	if (NormalizedDepthAxis.IsNearlyZero())
 	{
 		return;
@@ -653,7 +658,7 @@ bool USpriteSortComponent::UsesBoundsBasedOrigin() const
 
 FVector USpriteSortComponent::GetStableSortWorldLocation()
 {
-	if (!UsesBoundsBasedOrigin() || ((!IsValid(VisualRoot) || !bHasOriginalRelativeTransform) && OriginalRelativeTransforms.Num() == 0))
+	if ((!IsValid(VisualRoot) || !bHasOriginalRelativeTransform) && OriginalRelativeTransforms.Num() == 0)
 	{
 		return GetSortWorldLocation();
 	}
@@ -692,6 +697,29 @@ FVector USpriteSortComponent::GetStableSortWorldLocation()
 		VisualRoot->SetRelativeTransform(SavedRelativeTransform);
 	}
 	return SortWorldLocation;
+}
+
+FVector USpriteSortComponent::GetEffectiveCameraDepthAxis() const
+{
+	if (bUseCameraForwardDepthAxis)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (const APlayerController* PlayerController = World->GetFirstPlayerController())
+			{
+				if (const APlayerCameraManager* CameraManager = PlayerController->PlayerCameraManager)
+				{
+					const FVector CameraForward = CameraManager->GetCameraRotation().Vector();
+					if (!CameraForward.IsNearlyZero())
+					{
+						return CameraForward;
+					}
+				}
+			}
+		}
+	}
+
+	return CameraDepthAxis;
 }
 
 bool USpriteSortComponent::TryGetVisualBounds(FBoxSphereBounds& OutBounds) const

@@ -114,7 +114,7 @@ The core formula is:
 Feet/base world position
 -> projected onto SortAxis
 -> multiplied by DepthScale
--> applied to visuals along CameraDepthAxis
+-> applied to visuals along the camera-depth axis
 ```
 
 Only visuals move. Collision and gameplay transforms stay where they are.
@@ -127,7 +127,8 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 - `VisualComponentPivot`: uses the sprite/component pivot. This is useful when your PaperSprite origin is placed at the base of a pole, tree, prop, or character.
 - `SortOffset`: optional feet/base nudge when automatic bounds are not quite right.
 - `SortAxis`: world axis used to calculate sort order. Usually world Y for top-down Paper2D.
-- `CameraDepthAxis`: world axis used to move visuals for depth-buffer sorting. Usually world Z in this setup.
+- `bUseCameraForwardDepthAxis`: default on. Uses the active player camera's forward vector for the render-depth push so sprite height/Z placement does not decide sorting.
+- `CameraDepthAxis`: fallback world axis used when camera-forward depth is disabled or no player camera is available.
 - `DepthScale`: converts sort value into visual depth offset.
 - `MovementThreshold`: minimum actor/origin movement before movement updates re-sort.
 - `WhenMovedTickInterval`: timed movement check interval. Default is `0.05` seconds.
@@ -219,7 +220,8 @@ Player disappears behind the map:
 Player flickers/clips against a pillar:
 
 - Make sure the pillar also has `Sprite Sort Component`.
-- Set both player and pillar to the same `SortAxis`, `CameraDepthAxis`, and `DepthScale`.
+- Set both player and pillar to the same `SortAxis`, camera-depth behavior, and `DepthScale`.
+- Leave `bUseCameraForwardDepthAxis` enabled for most games. This prevents visible Z/height placement from controlling depth order.
 - Keep `DepthScale` large enough to create real depth separation, but not so large that visuals visibly drift. Default is `0.01`.
 - Put the pillar sprite pivot/origin at the base. `Auto` uses that pivot now.
 - If the pillar art still has a weird base, add a `Sprite Sort Origin` only for that pillar.
@@ -244,7 +246,7 @@ Player always appears in front:
 
 Sorting breaks when actors have different Z heights:
 
-- Keep gameplay actors near a consistent 2D plane when using depth-buffer sorting.
+- Leave `bUseCameraForwardDepthAxis` enabled so the renderer is pushed along camera depth instead of visible height.
 - Use small local visual offsets or `DepthPadding` for tiny layer nudges like props sitting above tiles.
 - SpriteSort2D preserves local visual offsets and does not force actors to a fixed Z height.
 
@@ -262,7 +264,7 @@ Project-wide defaults are available under:
 Project Settings -> Plugins -> Sprite Sort 2D
 ```
 
-The settings include default axes, depth scale, update mode, debug drawing, depth padding, actor-depth flattening, and auto-find behavior.
+The settings include default axes, camera-forward depth, depth scale, update mode, debug drawing, depth padding, and auto-find behavior.
 
 ## TileForge2D Notes
 

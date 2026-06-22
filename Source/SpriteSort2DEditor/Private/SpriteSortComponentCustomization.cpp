@@ -72,7 +72,7 @@ FText FSpriteSortComponentCustomization::GetWarningText() const
 			return LOCTEXT("ZeroSortAxisWarning", "SortAxis is zero. Use a non-zero axis such as world Y.");
 		}
 
-		if (Component->CameraDepthAxis.IsNearlyZero())
+		if (!Component->bUseCameraForwardDepthAxis && Component->CameraDepthAxis.IsNearlyZero())
 		{
 			return LOCTEXT("ZeroDepthAxisWarning", "CameraDepthAxis is zero. Use the axis that should receive visual depth offsets.");
 		}

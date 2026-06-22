@@ -20,6 +20,9 @@ public:
 	FVector DefaultCameraDepthAxis = FVector(0.f, 0.f, 1.f);
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
+	bool bDefaultUseCameraForwardDepthAxis = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	FVector DefaultBoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.000001"))
