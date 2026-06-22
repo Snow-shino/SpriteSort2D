@@ -23,7 +23,7 @@ public:
 	FVector DefaultBoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.000001"))
-	float DefaultDepthScale = 0.01f;
+	float DefaultDepthScale = 0.05f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Performance", meta = (ClampMin = "0.0"))
 	float DefaultMovementThreshold = 0.1f;
@@ -54,6 +54,18 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
 	float DefaultDepthPadding = 0.2f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultGroundDepthBias = 100.f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
+	bool bKeepAboveGroundPlane = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultMinimumGroundSeparation = 1.f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultDepthSnapInterval = 0.5f;
 
 	virtual FName GetCategoryName() const override;
 	virtual FName GetSectionName() const override;

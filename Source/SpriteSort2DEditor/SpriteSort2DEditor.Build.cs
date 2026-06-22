@@ -11,14 +11,12 @@ public class SpriteSort2DEditor : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"Paper2D",
 			"SpriteSort2D"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"UnrealEd",
-			"Kismet",
 			"PropertyEditor",
 			"Slate",
 			"SlateCore",

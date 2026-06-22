@@ -40,6 +40,10 @@ USpriteSortComponent::USpriteSortComponent()
 		bSortAllVisualComponents = Settings->bSortAllVisualComponents;
 		bIgnoreActorDepth = Settings->bIgnoreActorDepth;
 		DepthPadding = Settings->DefaultDepthPadding;
+		GroundDepthBias = Settings->DefaultGroundDepthBias;
+		bKeepAboveGroundPlane = Settings->bKeepAboveGroundPlane;
+		MinimumGroundSeparation = Settings->DefaultMinimumGroundSeparation;
+		DepthSnapInterval = Settings->DefaultDepthSnapInterval;
 	}
 }
 
@@ -53,12 +57,12 @@ void USpriteSortComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!VisualRoot && bAutoFindVisualRoot)
+	if (!VisualRoot && bAutoFindVisualRoot && !bSortAllVisualComponents)
 	{
 		AutoFindVisualRoot();
 	}
 
-	if (!TargetPrimitive && bAutoFindTargetPrimitive)
+	if (!TargetPrimitive && bAutoFindTargetPrimitive && SortingMode == ESpriteSortMode::TranslucentPriorityFallback)
 	{
 		AutoFindTargetPrimitive();
 	}
@@ -106,12 +110,12 @@ void USpriteSortComponent::UpdateSortNow()
 		return;
 	}
 
-	if (!VisualRoot && bAutoFindVisualRoot)
+	if (!VisualRoot && bAutoFindVisualRoot && !bSortAllVisualComponents)
 	{
 		AutoFindVisualRoot();
 	}
 
-	if (!TargetPrimitive && bAutoFindTargetPrimitive)
+	if (!TargetPrimitive && bAutoFindTargetPrimitive && SortingMode == ESpriteSortMode::TranslucentPriorityFallback)
 	{
 		AutoFindTargetPrimitive();
 	}
@@ -492,7 +496,7 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 	const FVector OwnerWorldLocation = IsValid(Owner) ? Owner->GetActorLocation() : FVector::ZeroVector;
 
 	const float OwnerDepth = FVector::DotProduct(OwnerWorldLocation, NormalizedDepthAxis);
-	const float DepthOffset = FVector::DotProduct(CurrentVisualDepthOffset, NormalizedDepthAxis) + DepthPadding;
+	const float DepthOffset = GetDepthOffsetScalar();
 	const FVector FlattenedWorldLocation = OriginalWorldLocation - NormalizedDepthAxis * OwnerDepth;
 	const FVector NewWorldLocation = FlattenedWorldLocation + NormalizedDepthAxis * DepthOffset;
 
@@ -502,6 +506,29 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 	FTransform FinalRelativeTransform = OriginalTransform;
 	FinalRelativeTransform.SetLocation(NewRelativeTransform.GetLocation());
 	Component->SetRelativeTransform(FinalRelativeTransform);
+}
+
+float USpriteSortComponent::GetDepthOffsetScalar() const
+{
+	const FVector NormalizedDepthAxis = CameraDepthAxis.GetSafeNormal();
+	if (NormalizedDepthAxis.IsNearlyZero())
+	{
+		return 0.f;
+	}
+
+	float DepthOffset = FVector::DotProduct(CurrentVisualDepthOffset, NormalizedDepthAxis) + GroundDepthBias + DepthPadding;
+
+	if (DepthSnapInterval > SMALL_NUMBER)
+	{
+		DepthOffset = FMath::GridSnap(DepthOffset, DepthSnapInterval);
+	}
+
+	if (bKeepAboveGroundPlane)
+	{
+		DepthOffset = FMath::Max(DepthOffset, MinimumGroundSeparation);
+	}
+
+	return DepthOffset;
 }
 
 void USpriteSortComponent::ApplyTranslucentPriorityFallback()

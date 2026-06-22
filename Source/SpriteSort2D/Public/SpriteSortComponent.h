@@ -41,10 +41,22 @@ public:
 	FVector BoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.000001"))
-	float DepthScale = 0.01f;
+	float DepthScale = 0.05f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Keeps gameplay Z from accidentally overpowering top-down XY sorting. Visuals keep their local offsets, but actor/world height is flattened before the sort depth is applied."))
 	bool bIgnoreActorDepth = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Base render-depth lift applied to sortable actors so they stay above unsorted ground/map sprites."))
+	float GroundDepthBias = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Prevents sortable actors from being pushed behind unsorted ground/map sprites when the sort value goes negative."))
+	bool bKeepAboveGroundPlane = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Minimum depth separation from unsorted ground/map sprites when bKeepAboveGroundPlane is enabled."))
+	float MinimumGroundSeparation = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Snaps render-depth offsets to a small grid to reduce depth-buffer flicker when two masked sprites are almost coplanar. Set to 0 to disable."))
+	float DepthSnapInterval = 0.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Tiny extra spacing on the render-depth axis. Useful for keeping props a hair above ground tiles without hardcoding actor Z."))
 	float DepthPadding = 0.2f;
@@ -146,6 +158,7 @@ private:
 	bool ValidateForSorting() const;
 	void ApplyVisualDepthOffset();
 	void ApplyDepthOffsetToComponent(USceneComponent* Component, const FTransform& OriginalTransform);
+	float GetDepthOffsetScalar() const;
 	void ApplyTranslucentPriorityFallback();
 	void DrawDebugInfo();
 	void WarnIfVisualRootContainsCollision() const;

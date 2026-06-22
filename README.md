@@ -47,6 +47,7 @@ By default, the component:
 - Infers a feet/base point from visual bounds.
 - Uses `Smart Auto` updates.
 - Keeps gameplay Z from overpowering top-down XY sorting.
+- Keeps sortable sprites above unsorted ground/map sprites by default.
 
 ## Recommended Actor Hierarchies
 
@@ -122,7 +123,11 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 
 - `bSortAllVisualComponents`: default on. Sorts the actor's safe visual primitives together.
 - `bIgnoreActorDepth`: default on. Prevents actor/world Z height from breaking top-down XY sorting.
-- `DepthPadding`: small render-depth spacing, useful for keeping visuals a hair above ground tiles.
+- `GroundDepthBias`: default `100`. Lifts sortable visuals above unsorted ground/map sprites.
+- `bKeepAboveGroundPlane`: default on. Prevents negative sort values from pushing actors behind the map.
+- `MinimumGroundSeparation`: default `1`. Minimum spacing above unsorted ground/map sprites.
+- `DepthSnapInterval`: default `0.5`. Snaps depth offsets to reduce masked-sprite flicker.
+- `DepthPadding`: default `0.2`. Tiny extra spacing, useful for keeping visuals a hair above ground tiles.
 - `OriginMode`: where the sort point comes from. Leave on `Auto` for most actors.
 - `SortOffset`: optional feet/base nudge when automatic bounds are not quite right.
 - `SortAxis`: world axis used to calculate sort order. Usually world Y for top-down Paper2D.
@@ -206,6 +211,20 @@ Sprite does not sort:
 - Check `CameraDepthAxis`.
 - Check update mode.
 - Turn on `bDebugDraw` to see the base point.
+
+Player disappears behind the map:
+
+- The map/ground sprite is still writing to the depth buffer even without `Sprite Sort Component`.
+- Keep `bKeepAboveGroundPlane` enabled.
+- Increase `GroundDepthBias` if your map uses a higher render-depth placement.
+- Existing actors made before this change may still have old defaults; reset the Sprite Sort Component defaults or set `DepthScale` to `0.05`, `GroundDepthBias` to `100`, and `DepthSnapInterval` to `0.5`.
+
+Player flickers/clips against a pillar:
+
+- Make sure the pillar also has `Sprite Sort Component`.
+- Set both player and pillar to the same `SortAxis`, `CameraDepthAxis`, `DepthScale`, and ground-safety values.
+- Keep `DepthSnapInterval` above zero. The default `0.5` reduces tiny z-fighting gaps.
+- If the pillar art has a weird base, add a `Sprite Sort Origin` only for that pillar.
 
 Sprite moves visually too far:
 

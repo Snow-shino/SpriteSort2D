@@ -36,6 +36,10 @@ Use this checklist before public release and after meaningful runtime changes.
 - [ ] Two moving actors crossing each other remain visually stable.
 - [ ] Actor placed higher on world Z still sorts by top-down base position when `bIgnoreActorDepth` is enabled.
 - [ ] Small local visual offsets, such as `0.2` above a tile, are preserved.
+- [ ] Moving player does not disappear behind an unsorted ground/map sprite.
+- [ ] Pillar/player overlap does not flicker when both actors use matching Sprite Sort settings.
+- [ ] `DepthSnapInterval` reduces flicker when sort depths are very close.
+- [ ] `GroundDepthBias` can be raised for maps placed above the default ground plane.
 - [ ] `bInvertSort` reverses order.
 - [ ] Lowering `DepthScale` reduces visual movement.
 
