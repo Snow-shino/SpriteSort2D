@@ -42,6 +42,7 @@ Leave these fields empty unless you have a special case:
 By default, the component:
 
 - Finds safe visual primitives automatically.
+- Supports root-only sprite prop actors, such as a pole/pillar actor whose `RenderComponent` is the root.
 - Sorts sibling visuals together, including equipment/clothing flipbooks.
 - Ignores likely collision components.
 - Uses the visual component pivot/origin as the sort point, then falls back to visual bounds.

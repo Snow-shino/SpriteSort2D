@@ -57,7 +57,7 @@ FText FSpriteSortComponentCustomization::GetWarningText() const
 			return LOCTEXT("MissingVisualRootWarning", "VisualRoot is missing. Assign one or use Auto Find Visual Root.");
 		}
 
-		if (Owner && Component->VisualRoot == Owner->GetRootComponent())
+		if (Owner && Component->VisualRoot == Owner->GetRootComponent() && !Component->bSortAllVisualComponents)
 		{
 			return LOCTEXT("RootVisualWarning", "VisualRoot is the actor root. Use a child VisualRoot so collision and gameplay transforms stay fixed.");
 		}

@@ -366,11 +366,6 @@ void USpriteSortComponent::RefreshVisualComponentCache()
 			continue;
 		}
 
-		if (Primitive == Owner->GetRootComponent())
-		{
-			continue;
-		}
-
 		VisualCandidates.Add(Primitive);
 
 		if (!VisualBoundsComponents.Contains(Primitive))
@@ -467,7 +462,7 @@ bool USpriteSortComponent::ValidateForSorting() const
 		return false;
 	}
 
-	if (VisualRoot == Owner->GetRootComponent())
+	if (VisualRoot == Owner->GetRootComponent() && !bSortAllVisualComponents)
 	{
 		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: VisualRoot is the actor root. Sorting will visually move the root component; use a separate child VisualRoot to keep gameplay transform stable."), *Owner->GetName());
 	}
