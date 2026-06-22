@@ -1,0 +1,34 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Sprite Sort 2D",
+	"Description": "Masked-material-compatible render-depth sorting for top-down 2D sprites and primitive visuals.",
+	"Category": "2D",
+	"CreatedBy": "SpriteSort2D",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "Paper2D",
+			"Enabled": true
+		}
+	],
+	"Modules": [
+		{
+			"Name": "SpriteSort2D",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SpriteSort2DEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
