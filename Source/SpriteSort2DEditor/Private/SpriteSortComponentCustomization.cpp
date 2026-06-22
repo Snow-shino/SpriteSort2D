@@ -77,7 +77,7 @@ FText FSpriteSortComponentCustomization::GetWarningText() const
 			return LOCTEXT("ZeroDepthAxisWarning", "CameraDepthAxis is zero. Use the axis that should receive visual depth offsets.");
 		}
 
-		if ((Component->OriginMode == ESpriteSortOriginMode::Auto || Component->OriginMode == ESpriteSortOriginMode::VisualBoundsBase || Component->OriginMode == ESpriteSortOriginMode::TargetBoundsBase) && Component->BoundsBaseAxis.IsNearlyZero())
+		if ((Component->OriginMode == ESpriteSortOriginMode::VisualBoundsBase || Component->OriginMode == ESpriteSortOriginMode::TargetBoundsBase) && Component->BoundsBaseAxis.IsNearlyZero())
 		{
 			return LOCTEXT("ZeroBoundsBaseAxisWarning", "BoundsBaseAxis is zero. Use the axis from sprite base toward sprite top, usually world Z.");
 		}

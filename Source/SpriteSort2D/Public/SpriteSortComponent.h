@@ -37,7 +37,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
 	FVector CameraDepthAxis = FVector(0.f, 0.f, 1.f);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (EditCondition = "OriginMode == ESpriteSortOriginMode::Auto || OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (EditCondition = "OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase", EditConditionHides))
 	FVector BoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.000001"))
@@ -152,6 +152,7 @@ private:
 	bool IsProbablyDynamicActor() const;
 	bool UsesBoundsBasedOrigin() const;
 	FVector GetStableSortWorldLocation();
+	bool TryGetVisualPivotLocation(FVector& OutLocation) const;
 	bool TryGetVisualBounds(FBoxSphereBounds& OutBounds) const;
 	bool TryGetTargetBounds(FBoxSphereBounds& OutBounds) const;
 	FVector GetActorLocationPlusOffset() const;

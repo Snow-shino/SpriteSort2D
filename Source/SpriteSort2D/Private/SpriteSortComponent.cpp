@@ -224,6 +224,7 @@ float USpriteSortComponent::GetCurrentSortValue() const
 FVector USpriteSortComponent::GetSortWorldLocation() const
 {
 	FBoxSphereBounds Bounds;
+	FVector PivotLocation = FVector::ZeroVector;
 
 	switch (OriginMode)
 	{
@@ -232,6 +233,9 @@ FVector USpriteSortComponent::GetSortWorldLocation() const
 
 	case ESpriteSortOriginMode::ActorLocationPlusOffset:
 		return GetActorLocationPlusOffset();
+
+	case ESpriteSortOriginMode::VisualComponentPivot:
+		return TryGetVisualPivotLocation(PivotLocation) ? PivotLocation + SortOffset : GetActorLocationPlusOffset();
 
 	case ESpriteSortOriginMode::VisualBoundsBase:
 		return TryGetVisualBounds(Bounds)
@@ -248,6 +252,11 @@ FVector USpriteSortComponent::GetSortWorldLocation() const
 		if (IsValid(SortOrigin))
 		{
 			return SortOrigin->GetComponentLocation();
+		}
+
+		if (TryGetVisualPivotLocation(PivotLocation))
+		{
+			return PivotLocation + SortOffset;
 		}
 
 		if (TryGetVisualBounds(Bounds) || TryGetTargetBounds(Bounds))
@@ -452,7 +461,7 @@ bool USpriteSortComponent::ValidateForSorting() const
 		return false;
 	}
 
-	if ((OriginMode == ESpriteSortOriginMode::Auto || OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase) && BoundsBaseAxis.IsNearlyZero())
+	if ((OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase) && BoundsBaseAxis.IsNearlyZero())
 	{
 		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: SpriteSortComponent BoundsBaseAxis is zero. Use the axis that points from the sprite base toward the sprite top, usually Z."), *Owner->GetName());
 		return false;
@@ -644,7 +653,7 @@ bool USpriteSortComponent::UsesBoundsBasedOrigin() const
 		return true;
 	}
 
-	return OriginMode == ESpriteSortOriginMode::Auto && !IsValid(SortOrigin);
+	return false;
 }
 
 FVector USpriteSortComponent::GetStableSortWorldLocation()
@@ -747,6 +756,59 @@ bool USpriteSortComponent::TryGetVisualBounds(FBoxSphereBounds& OutBounds) const
 
 	OutBounds = FBoxSphereBounds(BoundsBox);
 	return true;
+}
+
+bool USpriteSortComponent::TryGetVisualPivotLocation(FVector& OutLocation) const
+{
+	if (IsValid(VisualRoot))
+	{
+		const USceneComponent* Parent = VisualRoot->GetAttachParent();
+		OutLocation = Parent && bHasOriginalRelativeTransform
+			? Parent->GetComponentTransform().TransformPosition(OriginalRelativeTransform.GetLocation())
+			: VisualRoot->GetComponentLocation();
+		return true;
+	}
+
+	if (IsValid(TargetPrimitive))
+	{
+		OutLocation = TargetPrimitive->GetComponentLocation();
+		return true;
+	}
+
+	if (OriginalRelativeTransforms.Num() > 0)
+	{
+		const FVector BaseAxis = BoundsBaseAxis.GetSafeNormal();
+		bool bFound = false;
+		float BestBaseValue = 0.f;
+
+		for (const TPair<TWeakObjectPtr<USceneComponent>, FTransform>& Entry : OriginalRelativeTransforms)
+		{
+			const USceneComponent* Component = Entry.Key.Get();
+			if (!IsValid(Component))
+			{
+				continue;
+			}
+
+			const USceneComponent* Parent = Component->GetAttachParent();
+			const FVector CandidateLocation = Parent
+				? Parent->GetComponentTransform().TransformPosition(Entry.Value.GetLocation())
+				: Component->GetComponentLocation();
+			const float BaseValue = BaseAxis.IsNearlyZero()
+				? 0.f
+				: FVector::DotProduct(CandidateLocation, BaseAxis);
+
+			if (!bFound || BaseValue < BestBaseValue)
+			{
+				OutLocation = CandidateLocation;
+				BestBaseValue = BaseValue;
+				bFound = true;
+			}
+		}
+
+		return bFound;
+	}
+
+	return false;
 }
 
 bool USpriteSortComponent::TryGetTargetBounds(FBoxSphereBounds& OutBounds) const

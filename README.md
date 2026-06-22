@@ -44,7 +44,7 @@ By default, the component:
 - Finds safe visual primitives automatically.
 - Sorts sibling visuals together, including equipment/clothing flipbooks.
 - Ignores likely collision components.
-- Infers a feet/base point from visual bounds.
+- Uses the visual component pivot/origin as the sort point, then falls back to visual bounds.
 - Uses `Smart Auto` updates.
 - Preserves each visual component's original local offset.
 
@@ -123,6 +123,7 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 - `bSortAllVisualComponents`: default on. Sorts the actor's safe visual primitives together.
 - `DepthPadding`: default `0.2`. Tiny smooth extra spacing on the render-depth axis.
 - `OriginMode`: where the sort point comes from. Leave on `Auto` for most actors.
+- `VisualComponentPivot`: uses the sprite/component pivot. This is useful when your PaperSprite origin is placed at the base of a pole, tree, prop, or character.
 - `SortOffset`: optional feet/base nudge when automatic bounds are not quite right.
 - `SortAxis`: world axis used to calculate sort order. Usually world Y for top-down Paper2D.
 - `CameraDepthAxis`: world axis used to move visuals for depth-buffer sorting. Usually world Z in this setup.
@@ -161,8 +162,9 @@ You do not need to create a sort origin for every actor.
 In `Auto` mode, the sorter uses this order:
 
 1. Assigned `SortOrigin`, if you made one.
-2. Inferred base of visual bounds.
-3. Actor location plus `SortOffset`.
+2. Visual component pivot/origin.
+3. Inferred base of visual bounds.
+4. Actor location plus `SortOffset`.
 
 If a sprite has unusual art, add a `Sprite Sort Origin` at the feet/base and assign it. Keep it outside any moving visual subtree.
 
@@ -218,7 +220,8 @@ Player flickers/clips against a pillar:
 - Make sure the pillar also has `Sprite Sort Component`.
 - Set both player and pillar to the same `SortAxis`, `CameraDepthAxis`, and `DepthScale`.
 - Keep `DepthScale` large enough to create real depth separation, but not so large that visuals visibly drift. Default is `0.01`.
-- If the pillar art has a weird base, add a `Sprite Sort Origin` only for that pillar.
+- Put the pillar sprite pivot/origin at the base. `Auto` uses that pivot now.
+- If the pillar art still has a weird base, add a `Sprite Sort Origin` only for that pillar.
 
 Sprite moves visually too far:
 

@@ -12,6 +12,7 @@ All notable changes to SpriteSort2D are tracked here.
 - Added `DepthPadding` for small smooth render-depth nudges without hardcoding actor Z.
 - Preserved actor visual stacks as one group by moving only top-level visual primitives and letting nested children inherit the offset.
 - Removed experimental ground-depth bias, depth snapping, and actor-depth flattening because they made sprites float and jump.
+- Added `VisualComponentPivot` origin mode and made `Auto` prefer sprite/component pivots before falling back to bounds.
 - Reduced misleading editor warnings when auto visual collection is enabled.
 - Removed obsolete Details-panel action buttons now that the default workflow is component-only.
 - Updated README and QA docs around the simplified workflow.

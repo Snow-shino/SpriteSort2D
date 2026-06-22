@@ -27,6 +27,7 @@ enum class ESpriteSortOriginMode : uint8
 	Auto UMETA(DisplayName = "Auto"),
 	ExplicitSortOrigin UMETA(DisplayName = "Explicit Sort Origin"),
 	ActorLocationPlusOffset UMETA(DisplayName = "Actor Location + Offset"),
+	VisualComponentPivot UMETA(DisplayName = "Visual Component Pivot"),
 	VisualBoundsBase UMETA(DisplayName = "Visual Bounds Base"),
 	TargetBoundsBase UMETA(DisplayName = "Target Bounds Base")
 };
