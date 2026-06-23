@@ -19,6 +19,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSpriteSort2D, Log, All);
 namespace
 {
 	constexpr float DefaultDrawDuration = 0.f;
+	TMap<const UWorld*, float> GAutoSortBandDistanceByWorld;
 }
 
 USpriteSortComponent::USpriteSortComponent()
@@ -32,6 +33,9 @@ USpriteSortComponent::USpriteSortComponent()
 		SortAxis = Settings->DefaultSortAxis;
 		CameraDepthAxis = Settings->DefaultCameraDepthAxis;
 		bUseCameraForwardDepthAxis = Settings->bDefaultUseCameraForwardDepthAxis;
+		SortBandDistance = Settings->DefaultSortBandDistance;
+		SortLayerDepthStep = Settings->DefaultSortLayerDepthStep;
+		OrderDepthStep = Settings->DefaultOrderDepthStep;
 		BoundsBaseAxis = Settings->DefaultBoundsBaseAxis;
 		DepthScale = Settings->DefaultDepthScale;
 		MovementThreshold = Settings->DefaultMovementThreshold;
@@ -548,9 +552,27 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 		return;
 	}
 
-	const FVector ForegroundOffset = -NormalizedDepthAxis * ForegroundDepthBias;
-	const FVector PaddingOffset = NormalizedDepthAxis * DepthPadding;
-	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, ForegroundOffset + CurrentVisualDepthOffset + PaddingOffset);
+	const FVector OriginalWorldLocation = GetOriginalWorldLocation(Component, OriginalTransform);
+	const float OriginalDepth = FVector::DotProduct(OriginalWorldLocation, NormalizedDepthAxis);
+	const float CameraDepth = FVector::DotProduct(GetDepthCameraLocation(), NormalizedDepthAxis);
+	const float ResolvedBandDistance = GetResolvedSortBandDistance(OriginalDepth, CameraDepth);
+
+	const float LayerDepth = static_cast<float>(SortingLayer) * SortLayerDepthStep;
+	const float ManualOrderDepth = static_cast<float>(OrderInLayer) * OrderDepthStep;
+	const float DesiredDepth = CameraDepth
+		+ ResolvedBandDistance
+		+ CurrentSortValue * DepthScale
+		- LayerDepth
+		- ManualOrderDepth
+		- DepthPadding;
+
+	const FVector WorldOffset = NormalizedDepthAxis * (DesiredDepth - OriginalDepth);
+	const USceneComponent* Parent = Component->GetAttachParent();
+	const FVector LocalOffset = Parent
+		? Parent->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset)
+		: WorldOffset;
+
+	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, LocalOffset);
 }
 
 void USpriteSortComponent::ApplyTranslucentPriorityFallback()
@@ -757,6 +779,61 @@ FVector USpriteSortComponent::GetEffectiveCameraDepthAxis() const
 	}
 
 	return CameraDepthAxis;
+}
+
+FVector USpriteSortComponent::GetDepthCameraLocation() const
+{
+	if (bUseCameraForwardDepthAxis)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (const APlayerController* PlayerController = World->GetFirstPlayerController())
+			{
+				if (const APlayerCameraManager* CameraManager = PlayerController->PlayerCameraManager)
+				{
+					return CameraManager->GetCameraLocation();
+				}
+			}
+		}
+	}
+
+	return FVector::ZeroVector;
+}
+
+float USpriteSortComponent::GetResolvedSortBandDistance(float OriginalDepth, float CameraDepth) const
+{
+	if (SortBandDistance > 0.f)
+	{
+		return SortBandDistance;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return FMath::Max(1.f, OriginalDepth - CameraDepth - ForegroundDepthBias);
+	}
+
+	if (const float* ExistingDistance = GAutoSortBandDistanceByWorld.Find(World))
+	{
+		return *ExistingDistance;
+	}
+
+	const float AutoDistance = FMath::Max(1.f, OriginalDepth - CameraDepth - ForegroundDepthBias);
+	GAutoSortBandDistanceByWorld.Add(World, AutoDistance);
+	return AutoDistance;
+}
+
+FVector USpriteSortComponent::GetOriginalWorldLocation(const USceneComponent* Component, const FTransform& OriginalTransform) const
+{
+	if (!IsValid(Component))
+	{
+		return FVector::ZeroVector;
+	}
+
+	const USceneComponent* Parent = Component->GetAttachParent();
+	return Parent
+		? Parent->GetComponentTransform().TransformPosition(OriginalTransform.GetLocation())
+		: OriginalTransform.GetLocation();
 }
 
 bool USpriteSortComponent::TryGetVisualBounds(FBoxSphereBounds& OutBounds) const

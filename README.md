@@ -1,8 +1,8 @@
 # Sprite Sort 2D
 
-Sprite Sort 2D is a small Unreal Engine 5.5+ plugin for top-down 2D games that need reliable sprite sorting without making translucent materials the default solution.
+Sprite Sort 2D is a small Unreal Engine 5.7+ plugin for top-down 2D games that need reliable sprite sorting without making translucent materials the default solution.
 
-It sorts by a character or prop's feet/base position, then moves only the actor's visual components along a render-depth axis. The actor root, collision, gameplay location, AI location, saved transform, traces, and navigation stay untouched.
+It sorts by a character or prop's feet/base position, puts sortable actors into a shared invisible 2D render-depth band, then moves only visual components inside that band. The actor root, collision, gameplay location, AI location, saved transform, traces, and navigation stay untouched for normal character setups.
 
 ## What It Is
 
@@ -47,6 +47,7 @@ By default, the component:
 - Ignores likely collision components.
 - Uses a `Sprite Sort Origin` automatically if the actor has one.
 - Uses the visual component pivot/origin as the sort point, then falls back to visual bounds.
+- Places sortable actors in a shared 2D sort band so floors/maps do not interfere unless they also have `Sprite Sort Component`.
 - Uses `Smart Auto` updates.
 - Preserves each visual component's original local offset.
 
@@ -125,13 +126,18 @@ Use `VisualRoot` or `Sprite Sort Origin` only when you want explicit art-directe
 The core formula is:
 
 ```cpp
-Feet/base world position
--> projected onto SortAxis
--> multiplied by DepthScale
--> applied to visuals along the camera-depth axis
+SortKey = dot(feet/base world position, SortAxis)
+SortKey += SortingLayer and OrderInLayer bias
+SortKey -> shared camera-depth band
 ```
 
-Only visuals move. Collision and gameplay transforms stay where they are.
+Only visuals move. Collision and gameplay transforms stay where they are for normal actors where visuals are children of the gameplay root.
+
+This follows the same idea used by 2D engines:
+
+- Unity: sorting layer/order first, then distance/custom-axis sorting.
+- Godot: Y-sort compares the node's sort position, usually aligned to the base/feet.
+- SpriteSort2D: sorting layer/order first, then `SortAxis`, using a shared masked-material-friendly depth band in Unreal.
 
 ## Important Settings
 
@@ -143,8 +149,13 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 - `SortAxis`: world axis used to calculate sort order. Usually world Y for top-down Paper2D.
 - `bUseCameraForwardDepthAxis`: default on. Uses the active player camera's forward vector for the render-depth push so sprite height/Z placement does not decide sorting.
 - `CameraDepthAxis`: fallback world axis used when camera-forward depth is disabled or no player camera is available.
+- `SortingLayer`: coarse layer. Higher values render in front.
+- `OrderInLayer`: manual order inside the same layer. Higher values render in front.
+- `SortBandDistance`: default `0`, meaning auto. Positive values force the distance from the active camera to the shared 2D sort band.
+- `SortLayerDepthStep`: depth spacing between `SortingLayer` values.
+- `OrderDepthStep`: depth spacing between `OrderInLayer` values.
 - `DepthScale`: converts sort value into visual depth offset.
-- `ForegroundDepthBias`: default `100`. Keeps sorted actors in front of unsorted ground/map sprites, then sorts characters and props inside that foreground layer.
+- `ForegroundDepthBias`: default `500`. Used by auto band distance to place sortable actors in front of their original art plane.
 - `MovementThreshold`: minimum actor/origin movement before movement updates re-sort.
 - `WhenMovedTickInterval`: timed movement check interval. Default is `0.1` seconds.
 - `bInvertSort`: flips the sort result.
@@ -230,9 +241,9 @@ Sprite does not sort:
 
 Player disappears behind the map:
 
-- The map/ground sprite is still writing to the depth buffer even without `Sprite Sort Component`.
+- Do not add `Sprite Sort Component` to the map/ground unless it should sort with actors.
 - Leave `bUseCameraForwardDepthAxis` enabled.
-- Raise `ForegroundDepthBias` on sorted actors, or in Project Settings, until characters and props stay in front of the ground.
+- Leave `SortBandDistance` at `0` for auto. If the map still competes, set a positive `SortBandDistance` that places sortable actors closer to the camera.
 - For best results, keep floor/map sprites as background art and use SpriteSort2D only on actors that should sort against props, foliage, walls, NPCs, and the player.
 - Existing actors made during the ground-bias test should reset removed values by re-adding the component or recompiling the Blueprint.
 
@@ -242,8 +253,8 @@ Player flickers/clips against a pillar:
 - Set both player and pillar to the same `SortAxis`, camera-depth behavior, and `DepthScale`.
 - Leave `bUseCameraForwardDepthAxis` enabled for most games. This prevents visible Z/height placement from controlling depth order.
 - Keep `DepthScale` large enough to create real depth separation, but not so large that visuals visibly drift. Default is `0.01`.
-- Put the pillar sprite pivot/origin at the base. `Auto` uses that pivot now.
-- If the pillar art still has a weird base, add a `Sprite Sort Origin` only for that pillar.
+- Add `Sprite Sort Origin` to the pillar and move it to the line where the player should switch behind/in front.
+- Leave `OriginMode` on `Auto`; it will use the origin component first.
 
 Sprite moves visually too far:
 

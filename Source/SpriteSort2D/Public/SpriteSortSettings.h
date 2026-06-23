@@ -22,6 +22,15 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	bool bDefaultUseCameraForwardDepthAxis = true;
 
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultSortBandDistance = 0.f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultSortLayerDepthStep = 1000.f;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultOrderDepthStep = 1.f;
+
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	FVector DefaultBoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
@@ -59,7 +68,7 @@ public:
 	float DefaultDepthPadding = 0.2f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
-	float DefaultForegroundDepthBias = 100.f;
+	float DefaultForegroundDepthBias = 500.f;
 
 	virtual FName GetCategoryName() const override;
 	virtual FName GetSectionName() const override;

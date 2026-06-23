@@ -40,6 +40,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Uses the active camera forward vector for the invisible render-depth push. This is recommended for full games because sprite height/Z placement should not decide sorting. CameraDepthAxis is used as a fallback when no camera is available."))
 	bool bUseCameraForwardDepthAxis = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Higher layers render in front of lower layers. Leave at 0 for normal world actors. Use this like Unity/Godot coarse sorting layers."))
+	int32 SortingLayer = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "Manual order inside the same layer. Higher values render in front. Use this only for art-directed exceptions."))
+	int32 OrderInLayer = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "0 means auto. SpriteSort2D puts all sortable actors in the same invisible camera-depth band, then sorts by SortAxis. This keeps floors/maps out of the competition unless they also have SpriteSort2D."))
+	float SortBandDistance = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Depth separation between sorting layers. Higher SortingLayer values are pulled toward the camera by this amount."))
+	float SortLayerDepthStep = 1000.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Depth separation between OrderInLayer values. Higher OrderInLayer values are pulled toward the camera by this amount."))
+	float OrderDepthStep = 1.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (EditCondition = "OriginMode == ESpriteSortOriginMode::VisualBoundsBase || OriginMode == ESpriteSortOriginMode::TargetBoundsBase", EditConditionHides))
 	FVector BoundsBaseAxis = FVector(0.f, 0.f, 1.f);
 
@@ -50,7 +65,7 @@ public:
 	float DepthPadding = 0.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Keeps sorted actors in front of unsorted background/floor sprites by moving visuals slightly toward the camera before fine prop sorting is applied. Increase if characters clip behind the floor; lower if they get too close to the camera near plane."))
-	float ForegroundDepthBias = 100.f;
+	float ForegroundDepthBias = 500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "When true, SpriteSort2D moves every safe visual primitive on the actor, including sibling sprites for clothes, hair, weapons, shadows, and attachments. Collision is ignored."))
 	bool bSortAllVisualComponents = true;
@@ -165,6 +180,9 @@ private:
 	bool UsesBoundsBasedOrigin() const;
 	FVector GetStableSortWorldLocation();
 	FVector GetEffectiveCameraDepthAxis() const;
+	FVector GetDepthCameraLocation() const;
+	float GetResolvedSortBandDistance(float OriginalDepth, float CameraDepth) const;
+	FVector GetOriginalWorldLocation(const USceneComponent* Component, const FTransform& OriginalTransform) const;
 	bool TryGetVisualPivotLocation(FVector& OutLocation) const;
 	bool TryGetVisualBounds(FBoxSphereBounds& OutBounds) const;
 	bool TryGetTargetBounds(FBoxSphereBounds& OutBounds) const;
