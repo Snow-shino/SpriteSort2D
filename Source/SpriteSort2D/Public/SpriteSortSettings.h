@@ -55,6 +55,9 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
 	float DefaultDepthPadding = 0.2f;
 
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults", meta = (ClampMin = "0.0"))
+	float DefaultForegroundDepthBias = 100.f;
+
 	virtual FName GetCategoryName() const override;
 	virtual FName GetSectionName() const override;
 };

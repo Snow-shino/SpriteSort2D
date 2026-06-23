@@ -42,6 +42,7 @@ USpriteSortComponent::USpriteSortComponent()
 		bAutoFindTargetPrimitive = Settings->bAutoFindTargetPrimitive;
 		bSortAllVisualComponents = Settings->bSortAllVisualComponents;
 		DepthPadding = Settings->DefaultDepthPadding;
+		ForegroundDepthBias = Settings->DefaultForegroundDepthBias;
 	}
 }
 
@@ -513,7 +514,9 @@ void USpriteSortComponent::ApplyDepthOffsetToComponent(USceneComponent* Componen
 		return;
 	}
 
-	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, CurrentVisualDepthOffset + NormalizedDepthAxis * DepthPadding);
+	const FVector ForegroundOffset = -NormalizedDepthAxis * ForegroundDepthBias;
+	const FVector PaddingOffset = NormalizedDepthAxis * DepthPadding;
+	USpriteSortFunctionLibrary::ApplyVisualDepthOffset(Component, OriginalTransform, ForegroundOffset + CurrentVisualDepthOffset + PaddingOffset);
 }
 
 void USpriteSortComponent::ApplyTranslucentPriorityFallback()

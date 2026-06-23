@@ -49,6 +49,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Tiny extra spacing on the render-depth axis. This is added smoothly and does not snap or clamp actor Z."))
 	float DepthPadding = 0.2f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ClampMin = "0.0", ToolTip = "Keeps sorted actors in front of unsorted background/floor sprites by moving visuals slightly toward the camera before fine prop sorting is applied. Increase if characters clip behind the floor; lower if they get too close to the camera near plane."))
+	float ForegroundDepthBias = 100.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort", meta = (ToolTip = "When true, SpriteSort2D moves every safe visual primitive on the actor, including sibling sprites for clothes, hair, weapons, shadows, and attachments. Collision is ignored."))
 	bool bSortAllVisualComponents = true;
 

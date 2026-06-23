@@ -130,6 +130,7 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 - `bUseCameraForwardDepthAxis`: default on. Uses the active player camera's forward vector for the render-depth push so sprite height/Z placement does not decide sorting.
 - `CameraDepthAxis`: fallback world axis used when camera-forward depth is disabled or no player camera is available.
 - `DepthScale`: converts sort value into visual depth offset.
+- `ForegroundDepthBias`: default `100`. Keeps sorted actors in front of unsorted ground/map sprites, then sorts characters and props inside that foreground layer.
 - `MovementThreshold`: minimum actor/origin movement before movement updates re-sort.
 - `WhenMovedTickInterval`: timed movement check interval. Default is `0.05` seconds.
 - `bInvertSort`: flips the sort result.
@@ -213,8 +214,9 @@ Sprite does not sort:
 Player disappears behind the map:
 
 - The map/ground sprite is still writing to the depth buffer even without `Sprite Sort Component`.
-- Put the map/ground sprite on a background render/depth layer, or use a ground material that does not compete with character depth.
-- SpriteSort2D intentionally does not force characters to a fake Z height, because that causes floating and bad offsets.
+- Leave `bUseCameraForwardDepthAxis` enabled.
+- Raise `ForegroundDepthBias` on sorted actors, or in Project Settings, until characters and props stay in front of the ground.
+- For best results, keep floor/map sprites as background art and use SpriteSort2D only on actors that should sort against props, foliage, walls, NPCs, and the player.
 - Existing actors made during the ground-bias test should reset removed values by re-adding the component or recompiling the Blueprint.
 
 Player flickers/clips against a pillar:
