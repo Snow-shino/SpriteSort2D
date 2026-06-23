@@ -45,9 +45,23 @@ By default, the component:
 - Supports root-only sprite prop actors, such as a pole/pillar actor whose `RenderComponent` is the root.
 - Sorts sibling visuals together, including equipment/clothing flipbooks.
 - Ignores likely collision components.
+- Uses a `Sprite Sort Origin` automatically if the actor has one.
 - Uses the visual component pivot/origin as the sort point, then falls back to visual bounds.
 - Uses `Smart Auto` updates.
 - Preserves each visual component's original local offset.
+
+## Simple Prop Sort Line
+
+For a pillar, tree, wall, counter, or other prop where you want direct control:
+
+1. Add `Sprite Sort Component` to the prop.
+2. Add `Sprite Sort Origin` to the same prop.
+3. Move `Sprite Sort Origin` to the Y line where actors should switch behind/in front of the prop.
+4. Leave `OriginMode` on `Auto`.
+
+The sorter automatically uses that `Sprite Sort Origin` as the prop's explicit sort line. If the player's feet move above that line on the sort axis, the player sorts behind the prop. If the player's feet move below it, the player sorts in front.
+
+You do not need `VisualRoot` or `TargetPrimitive` for this setup.
 
 ## Recommended Actor Hierarchies
 
@@ -132,7 +146,7 @@ Only visuals move. Collision and gameplay transforms stay where they are.
 - `DepthScale`: converts sort value into visual depth offset.
 - `ForegroundDepthBias`: default `100`. Keeps sorted actors in front of unsorted ground/map sprites, then sorts characters and props inside that foreground layer.
 - `MovementThreshold`: minimum actor/origin movement before movement updates re-sort.
-- `WhenMovedTickInterval`: timed movement check interval. Default is `0.05` seconds.
+- `WhenMovedTickInterval`: timed movement check interval. Default is `0.1` seconds.
 - `bInvertSort`: flips the sort result.
 - `UpdateMode`: `SmartAuto`, `OnBeginPlayOnly`, `WhenMoved`, `EveryTick`, or `Manual`.
 - `SortingMode`: `VisualDepthOffset`, `Manual`, or `TranslucentPriorityFallback`.
@@ -152,7 +166,7 @@ Default origin mode is `Auto`.
 
 `OnBeginPlayOnly` caches the original transform and updates once. Use it for known static props.
 
-`WhenMoved` updates only when the actor or sort origin moves beyond `MovementThreshold`.
+`WhenMoved` checks movement on a timer, not every frame by default. It only updates when the actor or sort origin moves beyond `MovementThreshold`.
 
 `EveryTick` updates every frame. Use it for prototypes or unusual camera/depth setups.
 
@@ -165,15 +179,18 @@ You do not need to create a sort origin for every actor.
 In `Auto` mode, the sorter uses this order:
 
 1. Assigned `SortOrigin`, if you made one.
-2. Visual component pivot/origin.
-3. Inferred base of visual bounds.
-4. Actor location plus `SortOffset`.
+2. First `Sprite Sort Origin` component on the actor with `bAutoUseAsSortOrigin` enabled.
+3. Visual component pivot/origin.
+4. Inferred base of visual bounds.
+5. Actor location plus `SortOffset`.
 
 If a sprite has unusual art, add a `Sprite Sort Origin` at the feet/base and assign it. Keep it outside any moving visual subtree.
 
 ## Auto-Find Behavior
 
 With `bSortAllVisualComponents` enabled, Sprite Sort 2D collects all safe non-collision visual primitives on the actor.
+
+If the actor has a `Sprite Sort Origin`, Auto mode uses it as the explicit sort line. This is the recommended setup for pillars, trees, fences, walls, and props that need hand tuning.
 
 If `bSortAllVisualComponents` is disabled and `VisualRoot` is not assigned, Sprite Sort 2D tries:
 

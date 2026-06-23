@@ -32,7 +32,7 @@ public:
 	float DefaultMovementThreshold = 0.1f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Performance", meta = (ClampMin = "0.0"))
-	float DefaultWhenMovedTickInterval = 0.05f;
+	float DefaultWhenMovedTickInterval = 0.1f;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Defaults")
 	ESpriteSortUpdateMode DefaultUpdateMode = ESpriteSortUpdateMode::SmartAuto;
@@ -48,6 +48,9 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Auto Find")
 	bool bAutoFindTargetPrimitive = true;
+
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Auto Find")
+	bool bAutoFindSortOrigin = true;
 
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Auto Find")
 	bool bSortAllVisualComponents = true;

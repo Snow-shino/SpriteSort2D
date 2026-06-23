@@ -9,6 +9,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "SpriteSortFunctionLibrary.h"
+#include "SpriteSortOriginComponent.h"
 #include "SpriteSortSettings.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/ShapeComponent.h"
@@ -40,6 +41,7 @@ USpriteSortComponent::USpriteSortComponent()
 		bDebugDraw = Settings->bDebugDrawByDefault;
 		bAutoFindVisualRoot = Settings->bAutoFindVisualRoot;
 		bAutoFindTargetPrimitive = Settings->bAutoFindTargetPrimitive;
+		bAutoFindSortOrigin = Settings->bAutoFindSortOrigin;
 		bSortAllVisualComponents = Settings->bSortAllVisualComponents;
 		DepthPadding = Settings->DefaultDepthPadding;
 		ForegroundDepthBias = Settings->DefaultForegroundDepthBias;
@@ -64,6 +66,11 @@ void USpriteSortComponent::BeginPlay()
 	if (!TargetPrimitive && bAutoFindTargetPrimitive && SortingMode == ESpriteSortMode::TranslucentPriorityFallback)
 	{
 		AutoFindTargetPrimitive();
+	}
+
+	if (!SortOrigin && bAutoFindSortOrigin)
+	{
+		AutoFindSortOrigin();
 	}
 
 	WarnIfVisualRootContainsCollision();
@@ -117,6 +124,11 @@ void USpriteSortComponent::UpdateSortNow()
 	if (!TargetPrimitive && bAutoFindTargetPrimitive && SortingMode == ESpriteSortMode::TranslucentPriorityFallback)
 	{
 		AutoFindTargetPrimitive();
+	}
+
+	if (!SortOrigin && bAutoFindSortOrigin)
+	{
+		AutoFindSortOrigin();
 	}
 
 	RefreshVisualComponentCache();
@@ -329,6 +341,28 @@ void USpriteSortComponent::AutoFindTargetPrimitive()
 	if (!TargetPrimitive)
 	{
 		UE_LOG(LogSpriteSort2D, Warning, TEXT("%s: SpriteSortComponent could not find a TargetPrimitive. Assign a Paper2D or primitive visual component if translucent fallback is needed."), *Owner->GetName());
+	}
+}
+
+void USpriteSortComponent::AutoFindSortOrigin()
+{
+	AActor* Owner = GetOwner();
+	if (!IsValid(Owner))
+	{
+		return;
+	}
+
+	TArray<USpriteSortOriginComponent*> OriginComponents;
+	Owner->GetComponents(OriginComponents);
+
+	for (USpriteSortOriginComponent* OriginComponent : OriginComponents)
+	{
+		if (IsValid(OriginComponent) && OriginComponent->bAutoUseAsSortOrigin)
+		{
+			SortOrigin = OriginComponent;
+			ResetMovementBaseline();
+			return;
+		}
 	}
 }
 

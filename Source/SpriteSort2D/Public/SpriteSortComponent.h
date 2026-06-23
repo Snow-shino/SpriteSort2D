@@ -59,7 +59,7 @@ public:
 	float MovementThreshold = 0.1f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Performance", meta = (ClampMin = "0.0"))
-	float WhenMovedTickInterval = 0.f;
+	float WhenMovedTickInterval = 0.1f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort")
 	bool bInvertSort = false;
@@ -81,6 +81,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Auto Find")
 	bool bAutoFindTargetPrimitive = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sprite Sort|Auto Find", meta = (ToolTip = "Automatically uses the first Sprite Sort Origin component on this actor as the sort line/base point. This is the easiest setup for pillars, trees, walls, and props."))
+	bool bAutoFindSortOrigin = true;
 
 	UFUNCTION(BlueprintCallable, Category = "Sprite Sort")
 	void UpdateSortNow();
@@ -120,6 +123,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Sprite Sort|Auto Find")
 	void AutoFindTargetPrimitive();
+
+	UFUNCTION(BlueprintCallable, Category = "Sprite Sort|Auto Find")
+	void AutoFindSortOrigin();
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
